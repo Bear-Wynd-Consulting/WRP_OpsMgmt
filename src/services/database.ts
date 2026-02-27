@@ -74,7 +74,7 @@ function getPool(): Pool {
          console.log('[Database Service] Attempting initial connection test to PostgreSQL...');
          pool.query('SELECT NOW()')
              .then(res => console.log('[Database Service] PostgreSQL Pool connected successfully at:', res.rows[0].now))
-             .catch(err => {
+             .catch((err: any) => {
                  console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
                  console.error('[Database Service] FATAL: Initial PostgreSQL Pool connection test failed.');
                  console.error(`   Attempted to connect to: ${connectionString}`);
@@ -145,18 +145,13 @@ CREATE TABLE IF NOT EXISTS relationships (
     FOREIGN KEY (dataset_name, target_entry_id) REFERENCES data_entries (dataset_name, entry_id) ON DELETE CASCADE
 );`;
 
-// Store the name of the active dataset in memory for simplicity
-// NOTE: In a stateless or distributed environment, this should be stored elsewhere
-// (e.g., user session, separate config table, Redis)
-let activeDatasetName: string | null = null;
-
 
 async function initializeSchema(): Promise<void> {
     console.log('[Database Service] Initializing database schema if needed...');
     let client;
     try {
         client = await getPool().connect(); // Use getPool() which includes the connection test
-    } catch (connectError) {
+    } catch (connectError: any) {
          console.error('[Database Service] Failed to acquire client for schema initialization:', connectError);
          // Cannot proceed with schema init if connection fails
          throw new Error(`Failed to connect to database for schema initialization: ${connectError.message || connectError}`);
@@ -182,12 +177,6 @@ async function initializeSchema(): Promise<void> {
 
         await client.query('COMMIT');
         console.log('[Database Service] Schema initialization check complete.');
-
-        // Set active dataset if not already set
-        if (!activeDatasetName) {
-            activeDatasetName = 'default';
-            console.log(`[Database Service] Setting active dataset to '${activeDatasetName}'`);
-        }
 
     } catch (err) {
         console.error('[Database Service] Error during schema initialization transaction:', err);
@@ -252,28 +241,6 @@ async function populateDefaultData(client: any): Promise<void> {
 // --- Public API ---
 
 /**
- * Sets the active dataset name in memory.
- * NOTE: Does NOT check if the dataset exists in the DB here. Operations will fail later if it doesn't.
- * @param name The name of the dataset to activate.
- * @returns True (as validation happens during operations).
- */
-export async function setActiveDataset(name: string): Promise<boolean> {
-    console.log(`[setActiveDataset Service] Attempting to set active dataset to: ${name}`);
-    activeDatasetName = name;
-    console.log(`[setActiveDataset Service] Active dataset is now: ${activeDatasetName}`);
-    return true; // Assume success, actual validation happens in operations
-}
-
-/**
- * Gets the name of the currently active dataset stored in memory.
- * @returns The name of the active dataset or null if none is active.
- */
-export async function getActiveDatasetName(): Promise<string | null> {
-    console.log(`[getActiveDatasetName Service] Returning active dataset name: ${activeDatasetName}`);
-    return activeDatasetName;
-}
-
-/**
  * Gets the names of all available datasets from the database.
  * @returns A promise resolving to an array of dataset names.
  */
@@ -285,7 +252,7 @@ export async function getAllDatasetNames(): Promise<string[]> {
         const names = result.rows.map((row: { name: any; }) => row.name);
         console.log(`[getAllDatasetNames Service] Returning names: [${names.join(', ')}]`);
         return names;
-    } catch (error) {
+    } catch (error: any) {
         console.error('[getAllDatasetNames Service] Error fetching dataset names:', error);
         throw new Error(`Failed to fetch dataset names from database: ${error.message}`);
     } finally {
@@ -341,21 +308,14 @@ export async function createOrReplaceDataset(name: string, initialData: DataEntr
         }
 
         await client.query('COMMIT');
-        activeDatasetName = trimmedName; // Set the new dataset as active
 
-        console.log(`[createOrReplaceDataset Service] Dataset '${trimmedName}' created/replaced and set as active.`);
+        console.log(`[createOrReplaceDataset Service] Dataset '${trimmedName}' created/replaced.`);
         console.log(`[createOrReplaceDataset Service] Inserted ${initialData.length} new entries.`);
         return true;
 
     } catch (error) {
         await client.query('ROLLBACK');
         console.error(`[createOrReplaceDataset Service] Error creating/replacing dataset '${trimmedName}':`, error);
-        // Attempt to reset active dataset name if the failed one was set
-        if (activeDatasetName === trimmedName) {
-            const names = await getAllDatasetNames(); // Fetch existing names again
-            activeDatasetName = names.length > 0 ? names[0] : null; // Reset to first or null
-            console.warn(`[createOrReplaceDataset Service] Reset active dataset name to '${activeDatasetName}' due to error.`);
-        }
         return false;
     } finally {
         client.release();
@@ -366,16 +326,16 @@ export async function createOrReplaceDataset(name: string, initialData: DataEntr
 /**
  * Asynchronously adds one or more data entries to the *active* dataset in PostgreSQL.
  *
+ * @param datasetName The name of the dataset to operate on.
  * @param data The data entry or array of entries to add.
  * @returns A promise that resolves to true if the operation was successful, false otherwise.
  */
-export async function addData(data: DataEntry | DataEntry[]): Promise<boolean> {
-    const currentActiveDataset = activeDatasetName; // Capture at the start
-    if (!currentActiveDataset) {
-        console.error('[addData Service] Cannot add data, no active dataset selected.');
+export async function addData(datasetName: string, data: DataEntry | DataEntry[]): Promise<boolean> {
+    if (!datasetName) {
+        console.error('[addData Service] Cannot add data, no dataset name provided.');
         return false;
     }
-    console.log(`[addData Service - Active: ${currentActiveDataset}] Called.`);
+    console.log(`[addData Service - Dataset: ${datasetName}] Called.`);
 
     const client = await getPool().connect();
     try {
@@ -398,17 +358,17 @@ export async function addData(data: DataEntry | DataEntry[]): Promise<boolean> {
                 ON CONFLICT (dataset_name, entry_id)
                 DO UPDATE SET data = EXCLUDED.data;
             `;
-            await client.query(query, [currentActiveDataset, entryId, dataJson]);
-            console.log(`[addData Service - Active: ${currentActiveDataset}] Added/Updated entry with ID: ${entryId}`);
+            await client.query(query, [datasetName, entryId, dataJson]);
+            console.log(`[addData Service - Dataset: ${datasetName}] Added/Updated entry with ID: ${entryId}`);
         }
 
         await client.query('COMMIT');
-        console.log(`[addData Service - Active: ${currentActiveDataset}] Successfully added/updated ${entriesToAdd.length} entries.`);
+        console.log(`[addData Service - Dataset: ${datasetName}] Successfully added/updated ${entriesToAdd.length} entries.`);
         return true;
 
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error(`[addData Service - Active: ${currentActiveDataset}] Error adding data:`, error);
+        console.error(`[addData Service - Dataset: ${datasetName}] Error adding data:`, error);
         return false;
     } finally {
         client.release();
@@ -418,21 +378,21 @@ export async function addData(data: DataEntry | DataEntry[]): Promise<boolean> {
 /**
  * Asynchronously fetches all data entries from the *active* dataset in PostgreSQL.
  *
+ * @param datasetName The name of the dataset to operate on.
  * @returns A promise that resolves to an array of DataEntry objects.
  * @throws {Error} If the operation fails or no dataset is active.
  */
-export async function getAllData(): Promise<DataEntry[]> {
-    const currentActiveDataset = activeDatasetName; // Capture at the start
-    if (!currentActiveDataset) {
-        console.error('[getAllData Service] No active dataset selected.');
-        throw new Error('No active dataset selected.');
+export async function getAllData(datasetName: string): Promise<DataEntry[]> {
+    if (!datasetName) {
+        console.error('[getAllData Service] No dataset name provided.');
+        throw new Error('No dataset name provided.');
     }
-    console.log(`[getAllData Service - Active: ${currentActiveDataset}] Called.`);
+    console.log(`[getAllData Service - Dataset: ${datasetName}] Called.`);
     const client = await getPool().connect();
     try {
         const result: QueryResult<{ entry_id: string; data: any }> = await client.query(
             'SELECT entry_id, data FROM data_entries WHERE dataset_name = $1 ORDER BY created_at DESC',
-            [currentActiveDataset]
+            [datasetName]
         );
 
         // Combine entry_id back into the data object
@@ -441,10 +401,10 @@ export async function getAllData(): Promise<DataEntry[]> {
             ...row.data        // Spread the JSONB data
         }));
 
-        console.log(`[getAllData Service - Active: ${currentActiveDataset}] Returning ${entries.length} entries.`);
+        console.log(`[getAllData Service - Dataset: ${datasetName}] Returning ${entries.length} entries.`);
         return entries;
-    } catch (error) {
-        console.error(`[getAllData Service - Active: ${currentActiveDataset}] Error fetching data:`, error);
+    } catch (error: any) {
+        console.error(`[getAllData Service - Dataset: ${datasetName}] Error fetching data:`, error);
         throw new Error(`Failed to fetch data from database: ${error.message}`);
     } finally {
         client.release();
@@ -454,28 +414,28 @@ export async function getAllData(): Promise<DataEntry[]> {
 /**
  * Asynchronously fetches a single data entry by its ID from the *active* dataset in PostgreSQL.
  *
+ * @param datasetName The name of the dataset to operate on.
  * @param id The entry_id of the data entry to fetch.
  * @returns A promise that resolves to the DataEntry object or null if not found.
  * @throws {Error} If the operation fails or no dataset is active.
  */
-export async function getDataById(id: number | string): Promise<DataEntry | null> {
-    const currentActiveDataset = activeDatasetName; // Capture at the start
-    if (!currentActiveDataset) {
-        console.error(`[getDataById Service] No active dataset selected.`);
-        throw new Error('No active dataset selected.');
+export async function getDataById(datasetName: string, id: number | string): Promise<DataEntry | null> {
+    if (!datasetName) {
+        console.error(`[getDataById Service] No dataset name provided.`);
+        throw new Error('No dataset name provided.');
     }
     const searchId = String(id);
-    console.log(`[getDataById Service - Active: ${currentActiveDataset}] Called for ID: ${searchId}`);
+    console.log(`[getDataById Service - Dataset: ${datasetName}] Called for ID: ${searchId}`);
 
     const client = await getPool().connect();
     try {
         const result: QueryResult<{ entry_id: string; data: any }> = await client.query(
             'SELECT entry_id, data FROM data_entries WHERE dataset_name = $1 AND entry_id = $2',
-            [currentActiveDataset, searchId]
+            [datasetName, searchId]
         );
 
         if (result.rowCount === 0) {
-            console.warn(`[getDataById Service - Active: ${currentActiveDataset}] Entry not found for ID ${searchId}.`);
+            console.warn(`[getDataById Service - Dataset: ${datasetName}] Entry not found for ID ${searchId}.`);
             return null;
         }
 
@@ -484,11 +444,11 @@ export async function getDataById(id: number | string): Promise<DataEntry | null
             id: row.entry_id,
             ...row.data
         };
-        console.log(`[getDataById Service - Active: ${currentActiveDataset}] Found entry for ID ${searchId}.`);
+        console.log(`[getDataById Service - Dataset: ${datasetName}] Found entry for ID ${searchId}.`);
         return entry;
 
-    } catch (error) {
-        console.error(`[getDataById Service - Active: ${currentActiveDataset}] Error fetching data for ID ${searchId}:`, error);
+    } catch (error: any) {
+        console.error(`[getDataById Service - Dataset: ${datasetName}] Error fetching data for ID ${searchId}:`, error);
         throw new Error(`Failed to fetch data for ID ${searchId} from database: ${error.message}`);
     } finally {
         client.release();
@@ -499,21 +459,21 @@ export async function getDataById(id: number | string): Promise<DataEntry | null
 /**
  * Asynchronously fetches multiple data entries by their IDs from the *active* dataset in PostgreSQL.
  *
+ * @param datasetName The name of the dataset to operate on.
  * @param ids An array of entry_ids of the data entries to fetch.
  * @returns A promise that resolves to an array of DataEntry objects found.
  * @throws {Error} If the operation fails or no dataset is active.
  */
-export async function getDataByIds(ids: (number | string)[]): Promise<DataEntry[]> {
-    const currentActiveDataset = activeDatasetName; // Capture at the start
-    if (!currentActiveDataset) {
-        console.error(`[getDataByIds Service] No active dataset selected.`);
-        throw new Error('No active dataset selected.');
+export async function getDataByIds(datasetName: string, ids: (number | string)[]): Promise<DataEntry[]> {
+    if (!datasetName) {
+        console.error(`[getDataByIds Service] No dataset name provided.`);
+        throw new Error('No dataset name provided.');
     }
     const searchIds = ids.map(String);
     if (searchIds.length === 0) {
         return []; // Return empty array if no IDs are provided
     }
-    console.log(`[getDataByIds Service - Active: ${currentActiveDataset}] Called for IDs: [${searchIds.join(', ')}]`);
+    console.log(`[getDataByIds Service - Dataset: ${datasetName}] Called for IDs: [${searchIds.join(', ')}]`);
 
     const client = await getPool().connect();
     try {
@@ -522,17 +482,17 @@ export async function getDataByIds(ids: (number | string)[]): Promise<DataEntry[
             FROM data_entries
             WHERE dataset_name = $1 AND entry_id = ANY($2::text[])
         `;
-        const result: QueryResult<{ entry_id: string; data: any }> = await client.query(query, [currentActiveDataset, searchIds]);
+        const result: QueryResult<{ entry_id: string; data: any }> = await client.query(query, [datasetName, searchIds]);
 
         const entries = result.rows.map(row => ({
             id: row.entry_id,
             ...row.data
         }));
 
-        console.log(`[getDataByIds Service - Active: ${currentActiveDataset}] Found ${entries.length} entries for IDs [${searchIds.join(', ')}].`);
+        console.log(`[getDataByIds Service - Dataset: ${datasetName}] Found ${entries.length} entries for IDs [${searchIds.join(', ')}].`);
         return entries;
-    } catch (error) {
-        console.error(`[getDataByIds Service - Active: ${currentActiveDataset}] Error fetching data for IDs [${searchIds.join(', ')}]:`, error);
+    } catch (error: any) {
+        console.error(`[getDataByIds Service - Dataset: ${datasetName}] Error fetching data for IDs [${searchIds.join(', ')}]:`, error);
         throw new Error(`Failed to fetch multiple data entries from database: ${error.message}`);
     } finally {
         client.release();
@@ -542,23 +502,23 @@ export async function getDataByIds(ids: (number | string)[]): Promise<DataEntry[
 /**
  * Asynchronously updates a data entry by its ID in the *active* dataset in PostgreSQL.
  *
+ * @param datasetName The name of the dataset to operate on.
  * @param id The entry_id of the data entry to update.
  * @param updatedData The partial or full data object. The 'id' field within this object is ignored.
  * @returns A promise that resolves to true if the update was successful (row found and updated), false otherwise.
  * @throws {Error} If the operation fails or no dataset is active.
  */
-export async function updateDataById(id: number | string, updatedData: Partial<DataEntry>): Promise<boolean> {
-    const currentActiveDataset = activeDatasetName; // Capture at the start
-    if (!currentActiveDataset) {
-        console.error(`[updateDataById Service] Cannot update data, no active dataset.`);
-        throw new Error('No active dataset selected.');
+export async function updateDataById(datasetName: string, id: number | string, updatedData: Partial<DataEntry>): Promise<boolean> {
+    if (!datasetName) {
+        console.error(`[updateDataById Service] Cannot update data, no dataset name provided.`);
+        throw new Error('No dataset name provided.');
     }
     const updateId = String(id);
     // Remove 'id' property from the data to be stored/merged in JSONB
     const { id: ignoredId, ...dataToUpdate } = updatedData;
     const dataJson = JSON.stringify(dataToUpdate);
 
-    console.log(`[updateDataById Service - Active: ${currentActiveDataset}] Called for ID: ${updateId}`);
+    console.log(`[updateDataById Service - Dataset: ${datasetName}] Called for ID: ${updateId}`);
 
     const client = await getPool().connect();
     try {
@@ -569,17 +529,17 @@ export async function updateDataById(id: number | string, updatedData: Partial<D
             SET data = $3
             WHERE dataset_name = $1 AND entry_id = $2
         `;
-        const result = await client.query(query, [currentActiveDataset, updateId, dataJson]);
+        const result = await client.query(query, [datasetName, updateId, dataJson]);
 
         if (result.rowCount === 0) {
-            console.warn(`[updateDataById Service - Active: ${currentActiveDataset}] Entry not found for update (ID: ${updateId}).`);
+            console.warn(`[updateDataById Service - Dataset: ${datasetName}] Entry not found for update (ID: ${updateId}).`);
             return false;
         }
 
-        console.log(`[updateDataById Service - Active: ${currentActiveDataset}] Successfully updated entry ID ${updateId}.`);
+        console.log(`[updateDataById Service - Dataset: ${datasetName}] Successfully updated entry ID ${updateId}.`);
         return true;
-    } catch (error) {
-        console.error(`[updateDataById Service - Active: ${currentActiveDataset}] Error updating data for ID ${updateId}:`, error);
+    } catch (error: any) {
+        console.error(`[updateDataById Service - Dataset: ${datasetName}] Error updating data for ID ${updateId}:`, error);
         throw new Error(`Failed to update data for ID ${updateId} in database: ${error.message}`);
     } finally {
         client.release();
@@ -592,23 +552,23 @@ export async function updateDataById(id: number | string, updatedData: Partial<D
  * Asynchronously adds a relationship between two data entries in the *active* dataset in PostgreSQL.
  * Does nothing if the relationship already exists.
  *
+ * @param datasetName The name of the dataset to operate on.
  * @param sourceEntryId The ID of the source entry.
  * @param targetEntryId The ID of the target entry.
  * @returns A promise that resolves to the newly created or existing RelationshipEntry or null if source/target not found or self-reference.
  * @throws {Error} If the database operation fails or no dataset is active.
  */
-export async function addRelationship(sourceEntryId: number | string, targetEntryId: number | string): Promise<RelationshipEntry | null> {
-    const currentActiveDataset = activeDatasetName; // Capture at the start
-    if (!currentActiveDataset) {
-        console.error(`[addRelationship Service] Cannot add relationship, no active dataset.`);
-        throw new Error('No active dataset selected.');
+export async function addRelationship(datasetName: string, sourceEntryId: number | string, targetEntryId: number | string): Promise<RelationshipEntry | null> {
+    if (!datasetName) {
+        console.error(`[addRelationship Service] Cannot add relationship, no dataset name provided.`);
+        throw new Error('No dataset name provided.');
     }
     const sourceIdStr = String(sourceEntryId);
     const targetIdStr = String(targetEntryId);
-    console.log(`[addRelationship Service - Active: ${currentActiveDataset}] Called: Source ${sourceIdStr}, Target ${targetIdStr}`);
+    console.log(`[addRelationship Service - Dataset: ${datasetName}] Called: Source ${sourceIdStr}, Target ${targetIdStr}`);
 
     if (sourceIdStr === targetIdStr) {
-        console.warn(`[addRelationship Service - Active: ${currentActiveDataset}] Failed: Cannot add self-referencing relationship for ID ${sourceIdStr}.`);
+        console.warn(`[addRelationship Service - Dataset: ${datasetName}] Failed: Cannot add self-referencing relationship for ID ${sourceIdStr}.`);
         return null;
     }
 
@@ -617,16 +577,16 @@ export async function addRelationship(sourceEntryId: number | string, targetEntr
         await client.query('BEGIN');
 
         // Check if source and target entries exist in the active dataset
-        const checkSource = await client.query('SELECT 1 FROM data_entries WHERE dataset_name = $1 AND entry_id = $2', [currentActiveDataset, sourceIdStr]);
-        const checkTarget = await client.query('SELECT 1 FROM data_entries WHERE dataset_name = $1 AND entry_id = $2', [currentActiveDataset, targetIdStr]);
+        const checkSource = await client.query('SELECT 1 FROM data_entries WHERE dataset_name = $1 AND entry_id = $2', [datasetName, sourceIdStr]);
+        const checkTarget = await client.query('SELECT 1 FROM data_entries WHERE dataset_name = $1 AND entry_id = $2', [datasetName, targetIdStr]);
 
         if (checkSource.rowCount === 0) {
-            console.warn(`[addRelationship Service - Active: ${currentActiveDataset}] Failed: Source ID ${sourceIdStr} not found.`);
+            console.warn(`[addRelationship Service - Dataset: ${datasetName}] Failed: Source ID ${sourceIdStr} not found.`);
             await client.query('ROLLBACK');
             return null;
         }
         if (checkTarget.rowCount === 0) {
-            console.warn(`[addRelationship Service - Active: ${currentActiveDataset}] Failed: Target ID ${targetIdStr} not found.`);
+            console.warn(`[addRelationship Service - Dataset: ${datasetName}] Failed: Target ID ${targetIdStr} not found.`);
             await client.query('ROLLBACK');
             return null;
         }
@@ -638,33 +598,33 @@ export async function addRelationship(sourceEntryId: number | string, targetEntr
             ON CONFLICT (dataset_name, source_entry_id, target_entry_id) DO NOTHING
             RETURNING id, source_entry_id, target_entry_id, created_at;
         `;
-        const insertResult = await client.query(insertQuery, [currentActiveDataset, sourceIdStr, targetIdStr]);
+        const insertResult = await client.query(insertQuery, [datasetName, sourceIdStr, targetIdStr]);
 
         let relationship: RelationshipEntry | null = null;
-        if (insertResult.rowCount > 0) {
+        if (insertResult.rowCount && insertResult.rowCount > 0) {
             relationship = insertResult.rows[0];
-            console.log(`[addRelationship Service - Active: ${currentActiveDataset}] Successfully added relationship:`, relationship);
+            console.log(`[addRelationship Service - Dataset: ${datasetName}] Successfully added relationship:`, relationship);
         } else {
             // Relationship already existed, fetch it
-            console.log(`[addRelationship Service - Active: ${currentActiveDataset}] Relationship ${sourceIdStr} -> ${targetIdStr} already exists. Fetching...`);
+            console.log(`[addRelationship Service - Dataset: ${datasetName}] Relationship ${sourceIdStr} -> ${targetIdStr} already exists. Fetching...`);
              const selectResult = await client.query(
                  'SELECT id, source_entry_id, target_entry_id, created_at FROM relationships WHERE dataset_name = $1 AND source_entry_id = $2 AND target_entry_id = $3',
-                 [currentActiveDataset, sourceIdStr, targetIdStr]
+                 [datasetName, sourceIdStr, targetIdStr]
              );
-             if (selectResult.rowCount > 0) {
+             if (selectResult.rowCount && selectResult.rowCount > 0) {
                  relationship = selectResult.rows[0];
              } else {
                  // Should not happen if ON CONFLICT worked correctly, but handle defensively
-                 console.error(`[addRelationship Service - Active: ${currentActiveDataset}] Could not find existing relationship ${sourceIdStr} -> ${targetIdStr} after ON CONFLICT.`);
+                 console.error(`[addRelationship Service - Dataset: ${datasetName}] Could not find existing relationship ${sourceIdStr} -> ${targetIdStr} after ON CONFLICT.`);
              }
         }
 
         await client.query('COMMIT');
         return relationship;
 
-    } catch (error) {
+    } catch (error: any) {
         await client.query('ROLLBACK');
-        console.error(`[addRelationship Service - Active: ${currentActiveDataset}] Error adding relationship ${sourceIdStr} -> ${targetIdStr}:`, error);
+        console.error(`[addRelationship Service - Dataset: ${datasetName}] Error adding relationship ${sourceIdStr} -> ${targetIdStr}:`, error);
         throw new Error(`Failed to add relationship ${sourceIdStr} -> ${targetIdStr} in database: ${error.message}`);
     } finally {
         client.release();
@@ -675,18 +635,18 @@ export async function addRelationship(sourceEntryId: number | string, targetEntr
 /**
  * Asynchronously fetches all relationships originating from a specific source ID in the *active* dataset from PostgreSQL.
  *
+ * @param datasetName The name of the dataset to operate on.
  * @param sourceEntryId The ID of the source entry.
  * @returns A promise resolving to an array of RelationshipEntry objects.
  * @throws {Error} If the operation fails or no dataset is active.
  */
-export async function getRelationshipsBySourceId(sourceEntryId: number | string): Promise<RelationshipEntry[]> {
-    const currentActiveDataset = activeDatasetName; // Capture at the start
-    if (!currentActiveDataset) {
-        console.error(`[getRelationshipsBySourceId Service] No active dataset selected.`);
-        throw new Error('No active dataset selected.');
+export async function getRelationshipsBySourceId(datasetName: string, sourceEntryId: number | string): Promise<RelationshipEntry[]> {
+    if (!datasetName) {
+        console.error(`[getRelationshipsBySourceId Service] No dataset name provided.`);
+        throw new Error('No dataset name provided.');
     }
     const sourceIdStr = String(sourceEntryId);
-    console.log(`[getRelationshipsBySourceId Service - Active: ${currentActiveDataset}] Called for source ID: ${sourceIdStr}`);
+    console.log(`[getRelationshipsBySourceId Service - Dataset: ${datasetName}] Called for source ID: ${sourceIdStr}`);
 
     const client = await getPool().connect();
     try {
@@ -696,12 +656,12 @@ export async function getRelationshipsBySourceId(sourceEntryId: number | string)
             WHERE dataset_name = $1 AND source_entry_id = $2
             ORDER BY created_at DESC;
         `;
-        const result: QueryResult<RelationshipEntry> = await client.query(query, [currentActiveDataset, sourceIdStr]);
+        const result: QueryResult<RelationshipEntry> = await client.query(query, [datasetName, sourceIdStr]);
 
-        console.log(`[getRelationshipsBySourceId Service - Active: ${currentActiveDataset}] Found ${result.rowCount} relationships for source ${sourceIdStr}.`);
+        console.log(`[getRelationshipsBySourceId Service - Dataset: ${datasetName}] Found ${result.rowCount} relationships for source ${sourceIdStr}.`);
         return result.rows;
-    } catch (error) {
-        console.error(`[getRelationshipsBySourceId Service - Active: ${currentActiveDataset}] Error fetching relationships for source ID ${sourceIdStr}:`, error);
+    } catch (error: any) {
+        console.error(`[getRelationshipsBySourceId Service - Dataset: ${datasetName}] Error fetching relationships for source ID ${sourceIdStr}:`, error);
         throw new Error(`Failed to fetch relationships for ID ${sourceIdStr} from database: ${error.message}`);
     } finally {
         client.release();
@@ -711,16 +671,16 @@ export async function getRelationshipsBySourceId(sourceEntryId: number | string)
 /**
  * Asynchronously fetches all relationships from the *active* dataset in PostgreSQL.
  *
+ * @param datasetName The name of the dataset to operate on.
  * @returns A promise resolving to an array of all RelationshipEntry objects in the active dataset.
  * @throws {Error} If the operation fails or no dataset is active.
  */
-export async function getAllRelationships(): Promise<RelationshipEntry[]> {
-    const currentActiveDataset = activeDatasetName; // Capture at the start
-    if (!currentActiveDataset) {
-        console.error(`[getAllRelationships Service] No active dataset selected.`);
-        throw new Error('No active dataset selected.');
+export async function getAllRelationships(datasetName: string): Promise<RelationshipEntry[]> {
+    if (!datasetName) {
+        console.error(`[getAllRelationships Service] No dataset name provided.`);
+        throw new Error('No dataset name provided.');
     }
-    console.log(`[getAllRelationships Service - Active: ${currentActiveDataset}] Called`);
+    console.log(`[getAllRelationships Service - Dataset: ${datasetName}] Called`);
 
     const client = await getPool().connect();
     try {
@@ -730,12 +690,12 @@ export async function getAllRelationships(): Promise<RelationshipEntry[]> {
             WHERE dataset_name = $1
             ORDER BY created_at DESC;
         `;
-        const result: QueryResult<RelationshipEntry> = await client.query(query, [currentActiveDataset]);
+        const result: QueryResult<RelationshipEntry> = await client.query(query, [datasetName]);
 
-        console.log(`[getAllRelationships Service - Active: ${currentActiveDataset}] Returning ${result.rowCount} relationships.`);
+        console.log(`[getAllRelationships Service - Dataset: ${datasetName}] Returning ${result.rowCount} relationships.`);
         return result.rows;
-    } catch (error) {
-        console.error(`[getAllRelationships Service - Active: ${currentActiveDataset}] Error fetching all relationships:`, error);
+    } catch (error: any) {
+        console.error(`[getAllRelationships Service - Dataset: ${datasetName}] Error fetching all relationships:`, error);
         throw new Error(`Failed to fetch all relationships from database: ${error.message}`);
     } finally {
         client.release();

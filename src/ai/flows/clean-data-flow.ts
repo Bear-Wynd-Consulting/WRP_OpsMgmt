@@ -12,11 +12,10 @@
 import { ai } from '@/ai/ai-instance';
 import type { DataEntry } from '@/services/types'; // Updated import path
 import { z } from 'genkit';
-import { json } from 'genkit/experimental'; // Import json helper
 
 // Define a flexible schema for input, including the string 'id'
 const DataEntryInputSchema = z.record(z.string(), z.any())
-    .refine(data => typeof data.id === 'string', { message: "Input must have a string 'id' field." })
+    .refine((data): data is DataEntry => typeof data.id === 'string', { message: "Input must have a string 'id' field." })
     .describe('A flexible data entry object with string keys and any value types, requiring a string id.');
 
 // Define a flexible schema for output, which might exclude 'id'
@@ -58,10 +57,7 @@ Return ONLY the cleaned JSON object, without adding an 'id' field.`,
 
 
 // Define the Genkit flow
-export const cleanDataFlow = ai.defineFlow<
-  DataEntry, // Flow input is the full DataEntry with string id
-  CleanDataOutput // Flow output is the cleaned data without id
->(
+export const cleanDataFlow = ai.defineFlow(
   {
     name: 'cleanDataFlow',
     // We use the full DataEntry for the flow's inputSchema for type safety at the call site

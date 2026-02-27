@@ -13,7 +13,7 @@ import {
   getRelationshipsAction,
   getDataByIdsAction // Import action to fetch multiple entries
 } from '@/actions/data-actions';
-import { Loader2, Save, Sparkles, Edit, XCircle, LinkIcon, Plus, Trash2, Columns3, CheckSquare } from 'lucide-react'; // Added Columns3, CheckSquare
+import { Loader2, Save, Sparkles, Edit, XCircle, Plus, Columns3, CheckSquare } from 'lucide-react'; // Added Columns3, CheckSquare
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -120,7 +120,7 @@ export function DataDetailView({ initialData, entryId }: DataDetailViewProps) {
                     // Simplify headers (optional, based on previous logic)
                      const simpleHeaders = headers.filter(header => {
                         if (result.data.length > 0 && result.data[0] && typeof result.data[0] === 'object') {
-                             const firstValue = result.data[0][header];
+                             const firstValue = (result.data[0] as Record<string, unknown>)[header];
                              return typeof firstValue !== 'object' || firstValue === null;
                         }
                         return true;
@@ -305,6 +305,33 @@ export function DataDetailView({ initialData, entryId }: DataDetailViewProps) {
   };
   // --- End Manual Edit Handlers ---
 
+   // --- Header Editing Handlers ---
+   const handleEditHeadersClick = () => {
+    setTempHeaders([...relatedHeaders]);
+    setIsEditingHeaders(true);
+  };
+
+  const handleCancelHeaderEdit = () => {
+    setIsEditingHeaders(false);
+    setTempHeaders([]);
+  };
+
+  const handleHeaderInputChange = (index: number, value: string) => {
+    const newTempHeaders = [...tempHeaders];
+    newTempHeaders[index] = value;
+    setTempHeaders(newTempHeaders);
+  };
+
+  const handleSaveHeaders = () => {
+    setRelatedHeaders(tempHeaders);
+    setIsEditingHeaders(false);
+     toast({
+      title: 'Headers Updated',
+      description: 'Related data table headers have been updated for this view.',
+    });
+  };
+  // --- End Header Editing Handlers ---
+
    // --- Relationship Handlers ---
    const handleAddRelationship = () => {
         const trimmedTargetId = targetEntryId.trim();
@@ -357,37 +384,8 @@ export function DataDetailView({ initialData, entryId }: DataDetailViewProps) {
    };
    // --- End Relationship Handlers ---
 
-  // --- Header Editing Handlers ---
-  const handleEditHeadersClick = () => {
-    setTempHeaders([...relatedHeaders]);
-    setIsEditingHeaders(true);
-  };
-
-  const handleCancelHeaderEdit = () => {
-    setIsEditingHeaders(false);
-    setTempHeaders([]);
-  };
-
-  const handleHeaderInputChange = (index: number, value: string) => {
-    const newTempHeaders = [...tempHeaders];
-    newTempHeaders[index] = value;
-    setTempHeaders(newTempHeaders);
-  };
-
-  const handleSaveHeaders = () => {
-    setRelatedHeaders(tempHeaders);
-    setIsEditingHeaders(false);
-     toast({
-      title: 'Headers Updated',
-      description: 'Related data table headers have been updated for this view.',
-    });
-  };
-  // --- End Header Editing Handlers ---
 
   const isActionPending = isCleaning || isSaving || isLoadingRelationships || isLoadingRelatedData || isAddingRelationship;
-
-  // Prepare current data for display, ensuring id is included
-  const displayData = useMemo(() => ({ id: entryId, ...currentData }), [currentData, entryId]);
 
   return (
     <div className="space-y-6">
@@ -413,7 +411,7 @@ export function DataDetailView({ initialData, entryId }: DataDetailViewProps) {
                         <Textarea
                             id="edit-data-textarea"
                             // Use displayData which includes the ID for editing context, but ID is removed before saving
-                            value={editedJsonString || JSON.stringify(displayData, null, 2)}
+                            value={editedJsonString || JSON.stringify({ id: entryId, ...currentData }, null, 2)}
                             onChange={handleEditChange}
                             className="min-h-[250px] font-mono text-sm"
                             disabled={isSaving}
@@ -427,7 +425,7 @@ export function DataDetailView({ initialData, entryId }: DataDetailViewProps) {
                  ) : (
                     <pre className="p-4 bg-muted rounded-md overflow-auto text-sm">
                       {/* Display data including the ID */}
-                      {JSON.stringify(displayData, null, 2)}
+                      {JSON.stringify({ id: entryId, ...currentData }, null, 2)}
                     </pre>
                  )}
             </CardContent>

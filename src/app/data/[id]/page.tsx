@@ -1,12 +1,13 @@
 
 import { notFound } from 'next/navigation';
-import { getDataById, getActiveDatasetName } from '@/services/database'; // Import getActiveDatasetName
+import { getDataById } from '@/services/database'; // Import getActiveDatasetName
 import { DataDetailView } from '@/components/data-detail-view';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import type { DataEntry } from '@/services/types'; // Updated import path
+import { cookies } from 'next/headers';
 
 interface DataDetailPageProps {
   params: {
@@ -24,16 +25,22 @@ export default async function DataDetailPage({ params }: DataDetailPageProps) {
 
   try {
     // Fetch the active dataset name first for context
-    activeDatasetName = await getActiveDatasetName(); // Fetch using the service function
+    const cookieStore = await cookies();
+    activeDatasetName = cookieStore.get('active_dataset')?.value || 'default';
 
     console.log(`[DataDetailPage - Active: ${activeDatasetName || 'N/A'}] Rendering page for ID: ${id}`);
-    // Pass the string ID directly to getDataById
-    dataEntry = await getDataById(id); // Fetches from the active dataset using string ID
 
-    if (dataEntry) {
-        console.log(`[DataDetailPage - Active: ${activeDatasetName || 'N/A'}] Successfully fetched data for ID: ${id}.`);
+    if (activeDatasetName) {
+        // Pass the string ID directly to getDataById
+        dataEntry = await getDataById(activeDatasetName, id); // Fetches from the active dataset using string ID
+
+        if (dataEntry) {
+            console.log(`[DataDetailPage - Active: ${activeDatasetName || 'N/A'}] Successfully fetched data for ID: ${id}.`);
+        } else {
+            console.warn(`[DataDetailPage - Active: ${activeDatasetName || 'N/A'}] getDataById returned null for ID: ${id}. Entry not found in this dataset.`);
+        }
     } else {
-        console.warn(`[DataDetailPage - Active: ${activeDatasetName || 'N/A'}] getDataById returned null for ID: ${id}. Entry not found in this dataset.`);
+         error = "No active dataset selected.";
     }
 
   } catch (e) {
