@@ -82,13 +82,13 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
         __html: Object.entries(THEMES)
           .map(
             ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+${prefix} [data-chart=${sanitizeCssSelector(id)}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
       itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
+    return color ? `  --color-${sanitizeCssSelector(key)}: ${sanitizeCssValue(color)};` : null
   })
   .join("\n")}
 }
@@ -353,6 +353,16 @@ function getPayloadConfigFromPayload(
   return configLabelKey in config
     ? config[configLabelKey]
     : config[key as keyof typeof config]
+}
+
+// Helper to sanitize the CSS selector.
+function sanitizeCssSelector(value: string) {
+  return value.replace(/[^a-zA-Z0-9-._]/g, "")
+}
+
+// Helper to sanitize the CSS value.
+function sanitizeCssValue(value: string) {
+  return value.replace(/[<>;{}]/g, "")
 }
 
 export {
