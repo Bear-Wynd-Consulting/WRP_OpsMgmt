@@ -14,9 +14,6 @@ import { Pool, QueryResult } from 'pg';
 // Ensure your environment variables are set correctly in .env
 // Check the README.md for troubleshooting database connection errors.
 // ========================================================================
-//Basic connection
-//const connectionString = `postgres://Dataharbour:d&h$_628@localhost:5432/dataharbor_db`;
-//const client (connectionString);
 
 
 // --- Connection Pool ---
