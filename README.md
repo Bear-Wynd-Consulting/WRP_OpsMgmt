@@ -93,6 +93,23 @@ This is a Next.js application built within Firebase Studio for managing and expl
     ```
     Make sure you have set the `GOOGLE_GENAI_API_KEY` in your `.env` file for Genkit to work.
 
+## Docker Support
+
+You can also run the application using Docker and Docker Compose. This simplifies the setup by running the application and the PostgreSQL database in containers.
+
+1.  **Build and run the containers:**
+    ```bash
+    docker compose up --build
+    ```
+
+2.  **Access the application:**
+    Open your browser and navigate to `http://localhost:3000`.
+
+3.  **Stop the containers:**
+    ```bash
+    docker compose down
+    ```
+
 ### Troubleshooting Connection Errors (`ECONNREFUSED`)
 
 If you see a "connect ECONNREFUSED 127.0.0.1:5432" (or similar host/port) error in the terminal when starting the app (`npm run dev`), it means the application could not establish a connection to the PostgreSQL server. Check the following:
