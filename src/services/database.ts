@@ -1,11 +1,6 @@
-//Postgresql basic imports
-
-import client from '@/services/db/client';
-// src/services/database.ts
-//import { Pool, type QueryResult } from 'pg';
+import { Pool, QueryResult } from 'pg';
 import type { DataEntry, RelationshipEntry } from './types';
 import { v4 as uuidv4 } from 'uuid';
-import { Pool, QueryResult } from 'pg';
 
 // ========================================================================
 // ==                       PostgreSQL Implementation                    ==
@@ -25,12 +20,12 @@ export function getPool(): Pool {
         const port = parseInt(process.env.POSTGRES_PORT || '5432', 10);
         const user = process.env.POSTGRES_USER;
         const password = process.env.POSTGRES_PASSWORD; // Keep confidential
-        const database = process.env.POSTGRES_DATABASE;
+        const database = process.env.POSTGRES_DATABASE || process.env.POSTGRES_DB;
 
         const connectionString = `postgres://${user}:[MASKED]@${host}:${port}/${database}`; // For logging
 
         if (!user || !password || !database) {
-             console.error("[Database Service] ERROR: Missing required PostgreSQL environment variables (POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DATABASE).");
+             console.error("[Database Service] ERROR: Missing required PostgreSQL environment variables (POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DATABASE or POSTGRES_DB).");
              console.error(`[Database Service] Current Config: host=${host}, port=${port}, user=${user ? user : 'MISSING'}, database=${database ? database : 'MISSING'}, password=${password ? '[SET]' : 'MISSING'}`);
              throw new Error("Missing required PostgreSQL environment variables. Check your .env file.");
         }
@@ -83,6 +78,7 @@ export function getPool(): Pool {
                      console.error('        1. PostgreSQL server is not running on the specified host and port.');
                      console.error('        2. Firewall is blocking the connection.');
                      console.error('        3. Incorrect POSTGRES_HOST or POSTGRES_PORT in .env.');
+                     console.error('        4. If running in Docker, ensure POSTGRES_HOST matches the database service name (e.g., "db") and not "localhost".');
                  } else if (err.code === 'ENOTFOUND') {
                      console.error('   ---> ENOTFOUND error means the specified hostname could not be resolved.');
                      console.error('        Common causes:');
