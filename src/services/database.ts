@@ -19,7 +19,7 @@ import { Pool, QueryResult } from 'pg';
 // --- Connection Pool ---
 let pool: Pool | null = null;
 
-function getPool(): Pool {
+export function getPool(): Pool {
     if (!pool) {
         const host = process.env.POSTGRES_HOST || 'localhost';
         const port = parseInt(process.env.POSTGRES_PORT || '5432', 10);
