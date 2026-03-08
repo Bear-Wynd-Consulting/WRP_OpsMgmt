@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { markTaskAsComplete } from '@/actions/workOrderActions';
+import { markTaskAsComplete } from '@/services/db/workOrderActions';
 import type { WorkOrder, WorkOrderTask } from '@/services/workOrderService';
 
 interface WorkOrderDetailProps {
