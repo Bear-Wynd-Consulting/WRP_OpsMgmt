@@ -16,8 +16,70 @@ This is a Next.js application built within Firebase Studio for managing and expl
 *   **AI Data Cleaning:** Use Genkit (Google AI) to suggest and apply data cleaning transformations.
 *   **Relationship Management:** Define and view relationships between data entries within a dataset.
 *   **Persistent Storage:** Uses PostgreSQL to store datasets, entries, and relationships.
+*   **Admin Panel:** Unified dashboard for managing property management services.
+*   **Task Templates:** Create and manage templates for recurring tasks.
+*   **Work Orders:** Track and manage work order progress and associated tasks.
 
-## Getting Started
+## Getting Started (Docker Beginners Guide)
+
+If you are new to IT and want the easiest way to get this application running, we recommend using Docker. Docker packages the application and its database so you don't have to install them manually.
+
+### Prerequisites for Docker Setup
+
+1.  **Install Docker Desktop:** Download and install Docker Desktop for your operating system (Windows, Mac, or Linux) from [docker.com](https://www.docker.com/products/docker-desktop/). Ensure Docker Desktop is running.
+2.  **Get a Google Gemini API Key:** To use the AI data cleaning features, you need a free API key from Google.
+    *   Go to [Google AI Studio](https://aistudio.google.com/).
+    *   Sign in with a Google account.
+    *   Click "Get API key" and create a new key. Save this key somewhere safe.
+
+### Step-by-Step Instructions
+
+1.  **Open your Terminal or Command Prompt:**
+    *   Windows: Search for `cmd` or `PowerShell`.
+    *   Mac: Search for `Terminal`.
+2.  **Navigate to the project folder:**
+    Use the `cd` command to change directories to where you downloaded or cloned this project.
+    ```bash
+    cd path/to/DataHarbor
+    ```
+3.  **Create your Environment File (`.env`):**
+    The application needs a configuration file to know how to connect to the database and use the AI.
+    *   Create a new plain text file in the root of the project folder and name it exactly `.env` (don't forget the dot at the beginning).
+    *   Open the `.env` file in any text editor (like Notepad or TextEdit) and paste the following, replacing `YOUR_API_KEY_HERE` with the key you got from Google AI Studio:
+
+    ```dotenv
+    # Database Configuration for Docker
+    POSTGRES_HOST=db
+    POSTGRES_PORT=5432
+    POSTGRES_USER=dataharbor_user
+    POSTGRES_PASSWORD=secure_password_123
+    POSTGRES_DATABASE=dataharbor_db
+
+    # Google AI Key
+    GOOGLE_GENAI_API_KEY=YOUR_API_KEY_HERE
+    ```
+    *(Note: If you change the database credentials here, you must also update the `docker-compose.yml` file to match. For a beginner setup, leaving them as shown above is easiest).*
+
+4.  **Start the Application:**
+    Run the following command in your terminal. This will download the necessary parts and start the application. It might take a few minutes the first time.
+    ```bash
+    docker compose up --build -d
+    ```
+    *(The `-d` runs it in the background so you can still use your terminal).*
+
+5.  **Access the App:**
+    Once it finishes, open your web browser and go to:
+    **http://localhost:3000**
+
+6.  **Stop the Application:**
+    When you are done, you can stop the application by running:
+    ```bash
+    docker compose down
+    ```
+
+---
+
+## Getting Started (Manual Setup for Developers)
 
 ### Prerequisites
 

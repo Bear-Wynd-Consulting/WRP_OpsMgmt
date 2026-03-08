@@ -1,6 +1,6 @@
 import React from 'react';
-import { fetchWorkOrderData } from '@/actions/workOrderActions';
-import WorkOrderDetail from '@/components/work-orders/WorkOrderDetail';
+import { fetchWorkOrderData } from '@/services/db/workOrderActions';
+import WorkOrderDetail from '@/services/db/WorkOrderDetail';
 import { notFound } from 'next/navigation';
 
 export default async function WorkOrderPage({ params }: { params: { id: string } }) {

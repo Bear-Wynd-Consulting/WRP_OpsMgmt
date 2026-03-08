@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: dataharbor-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-Dataharbour}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-[yourpassword]}
+      POSTGRES_DB: ${POSTGRES_DATABASE:-dataharbor_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-Dataharbour} -d ${POSTGRES_DATABASE:-dataharbor_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dataharbor-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # Database Connection Strings mapped from db container
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-Dataharbour}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-[yourpassword]}
+      DB_NAME: ${POSTGRES_DATABASE:-dataharbor_db}
+
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${POSTGRES_USER:-Dataharbour}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-[yourpassword]}
+      DATABASE_NAME: ${POSTGRES_DATABASE:-dataharbor_db}
+
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-Dataharbour}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-[yourpassword]}
+      POSTGRES_DATABASE: ${POSTGRES_DATABASE:-dataharbor_db}
+
+      # Genkit AI Config
+      GOOGLE_GENAI_API_KEY: ${GOOGLE_GENAI_API_KEY:-your_google_genai_api_key}
+
+      # Tell Next.js we are in a docker container
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

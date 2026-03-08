@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDashboardStats } from '@/actions/dashboardActions';
+import { getDashboardStats } from '@/services/db/dashboardActions';
 import { ClipboardList, CheckSquare } from 'lucide-react';
 
 export default async function StatsWidget() {
