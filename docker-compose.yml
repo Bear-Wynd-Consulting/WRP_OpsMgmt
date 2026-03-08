@@ -6,15 +6,15 @@ services:
     container_name: dataharbor-db
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-Dataharbour}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-[yourpassword]}
+      POSTGRES_USER: ${POSTGRES_USER:-dataharbour}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Cpw^@*Hjw}
       POSTGRES_DB: ${POSTGRES_DATABASE:-dataharbor_db}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-Dataharbour} -d ${POSTGRES_DATABASE:-dataharbor_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dataharbour} -d ${POSTGRES_DATABASE:-dataharbor_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,20 +31,20 @@ services:
       # Database Connection Strings mapped from db container
       DB_HOST: db
       DB_PORT: 5432
-      DB_USER: ${POSTGRES_USER:-Dataharbour}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-[yourpassword]}
+      DB_USER: ${POSTGRES_USER:-dataharbour}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-Cpw^@*Hjw}
       DB_NAME: ${POSTGRES_DATABASE:-dataharbor_db}
 
       DATABASE_HOST: db
       DATABASE_PORT: 5432
-      DATABASE_USER: ${POSTGRES_USER:-Dataharbour}
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-[yourpassword]}
+      DATABASE_USER: ${POSTGRES_USER:-dataharbour}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-Cpw^@*Hjw}
       DATABASE_NAME: ${POSTGRES_DATABASE:-dataharbor_db}
 
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
-      POSTGRES_USER: ${POSTGRES_USER:-Dataharbour}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-[yourpassword]}
+      POSTGRES_USER: ${POSTGRES_USER:-dataharbour}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Cpw^@*Hjw}
       POSTGRES_DATABASE: ${POSTGRES_DATABASE:-dataharbor_db}
 
       # Genkit AI Config
