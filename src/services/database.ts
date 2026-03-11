@@ -1,11 +1,6 @@
-//Postgresql basic imports
-
-import client from '@/services/db/client';
-// src/services/database.ts
-//import { Pool, type QueryResult } from 'pg';
+import { Pool, QueryResult } from 'pg';
 import type { DataEntry, RelationshipEntry } from './types';
 import { v4 as uuidv4 } from 'uuid';
-import { Pool, QueryResult } from 'pg';
 
 // ========================================================================
 // ==                       PostgreSQL Implementation                    ==
@@ -19,18 +14,18 @@ import { Pool, QueryResult } from 'pg';
 // --- Connection Pool ---
 let pool: Pool | null = null;
 
-function getPool(): Pool {
+export function getPool(): Pool {
     if (!pool) {
         const host = process.env.POSTGRES_HOST || 'localhost';
         const port = parseInt(process.env.POSTGRES_PORT || '5432', 10);
         const user = process.env.POSTGRES_USER;
         const password = process.env.POSTGRES_PASSWORD; // Keep confidential
-        const database = process.env.POSTGRES_DATABASE;
+        const database = process.env.POSTGRES_DATABASE || process.env.POSTGRES_DB;
 
         const connectionString = `postgres://${user}:[MASKED]@${host}:${port}/${database}`; // For logging
 
         if (!user || !password || !database) {
-             console.error("[Database Service] ERROR: Missing required PostgreSQL environment variables (POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DATABASE).");
+             console.error("[Database Service] ERROR: Missing required PostgreSQL environment variables (POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DATABASE or POSTGRES_DB).");
              console.error(`[Database Service] Current Config: host=${host}, port=${port}, user=${user ? user : 'MISSING'}, database=${database ? database : 'MISSING'}, password=${password ? '[SET]' : 'MISSING'}`);
              throw new Error("Missing required PostgreSQL environment variables. Check your .env file.");
         }
@@ -83,6 +78,7 @@ function getPool(): Pool {
                      console.error('        1. PostgreSQL server is not running on the specified host and port.');
                      console.error('        2. Firewall is blocking the connection.');
                      console.error('        3. Incorrect POSTGRES_HOST or POSTGRES_PORT in .env.');
+                     console.error('        4. If running in Docker, ensure POSTGRES_HOST matches the database service name (e.g., "db") and not "localhost".');
                  } else if (err.code === 'ENOTFOUND') {
                      console.error('   ---> ENOTFOUND error means the specified hostname could not be resolved.');
                      console.error('        Common causes:');
@@ -192,30 +188,33 @@ async function initializeSchema(): Promise<void> {
 }
 
 async function populateDefaultData(client: any): Promise<void> {
-     console.log('[Database Service] Populating default data for "default" dataset...');
-     const initialDefaultData: Omit<DataEntry, 'id'>[] = [
-         { name: 'Simulated Example Data', value: 123, timestamp: new Date().toISOString(), details: 'Some initial details' },
-         { name: 'Another Simulated Entry', value: 456, category: 'Test', timestamp: new Date().toISOString(), email: ' test@example.com ', inconsistent_value: ' yes '},
-         { complex: { nested: true, arr: [1, 2] }, description: 'Complex object example', timestamp: new Date().toISOString(), status: 'pending' },
-     ];
-     const datasetName = 'default';
+    console.log('[Database Service] Populating default data for "default" dataset...');
+    const initialDefaultData: Omit<DataEntry, 'id'>[] = [
+        { name: 'Simulated Example Data', value: 123, timestamp: new Date().toISOString(), details: 'Some initial details' },
+        { name: 'Another Simulated Entry', value: 456, category: 'Test', timestamp: new Date().toISOString(), email: ' test@example.com ', inconsistent_value: ' yes '},
+        { complex: { nested: true, arr: [1, 2] }, description: 'Complex object example', timestamp: new Date().toISOString(), status: 'pending' },
+    ];
+    const datasetName = 'default';
 
-     try {
-        for (const entryData of initialDefaultData) {
-             // Assign a UUID as the entry_id for consistency
-             const entryId = uuidv4();
-             const dataJson = JSON.stringify(entryData); // Store the whole object without id
-             await client.query(
-                 'INSERT INTO data_entries (dataset_name, entry_id, data) VALUES ($1, $2, $3)',
-                 [datasetName, entryId, dataJson]
-             );
-             console.log(`[Database Service] Added default entry with ID ${entryId} to dataset '${datasetName}'.`);
-        }
-         console.log('[Database Service] Default data populated successfully.');
-     } catch (error) {
-         console.error('[Database Service] Error populating default data:', error);
-         // Don't rollback the dataset creation, but log the error
-     }
+    try {
+        if (initialDefaultData.length === 0) return;
+
+        const values: any[] = [];
+        const placeholders = initialDefaultData.map((entryData, index) => {
+            const entryId = uuidv4();
+            const dataJson = JSON.stringify(entryData);
+            values.push(datasetName, entryId, dataJson);
+            return `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3})`;
+        }).join(', ');
+
+        const query = `INSERT INTO data_entries (dataset_name, entry_id, data) VALUES ${placeholders}`;
+        await client.query(query, values);
+        console.log(`[Database Service] Added ${initialDefaultData.length} default entries to dataset '${datasetName}'.`);
+        console.log('[Database Service] Default data populated successfully.');
+    } catch (error) {
+        console.error('[Database Service] Error populating default data:', error);
+        // Don't rollback the dataset creation, but log the error
+    }
 }
 
 
@@ -289,19 +288,22 @@ export async function createOrReplaceDataset(name: string, initialData: DataEntr
         console.log(`[createOrReplaceDataset Service] Existing entries and relationships cleared for '${trimmedName}'.`);
 
 
-        // Insert new data entries
-        for (const entryData of initialData) {
-            // Assign a UUID if id is missing, otherwise use provided id (converted to string)
-            const entryId = entryData.id ? String(entryData.id) : uuidv4();
-            // Remove 'id' from the data to be stored in JSONB, if it exists
-            const { id, ...dataToStore } = entryData;
-            const dataJson = JSON.stringify(dataToStore);
+        // Insert new data entries in batches to optimize performance and stay within parameter limits
+        const BATCH_SIZE = 1000;
+        for (let i = 0; i < initialData.length; i += BATCH_SIZE) {
+            const batch = initialData.slice(i, i + BATCH_SIZE);
+            const values: any[] = [];
+            const placeholders = batch.map((entryData, index) => {
+                const entryId = entryData.id ? String(entryData.id) : uuidv4();
+                const { id, ...dataToStore } = entryData;
+                const dataJson = JSON.stringify(dataToStore);
+                values.push(trimmedName, entryId, dataJson);
+                return `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3})`;
+            }).join(', ');
 
-            await client.query(
-                'INSERT INTO data_entries (dataset_name, entry_id, data) VALUES ($1, $2, $3)',
-                [trimmedName, entryId, dataJson]
-            );
-             console.log(`[createOrReplaceDataset Service] Added entry with ID ${entryId} to dataset '${trimmedName}'.`);
+            const query = `INSERT INTO data_entries (dataset_name, entry_id, data) VALUES ${placeholders}`;
+            await client.query(query, values);
+            console.log(`[createOrReplaceDataset Service] Added batch of ${batch.length} entries to dataset '${trimmedName}'.`);
         }
 
         await client.query('COMMIT');
@@ -340,23 +342,29 @@ export async function addData(datasetName: string, data: DataEntry | DataEntry[]
 
         const entriesToAdd = Array.isArray(data) ? data : [data];
 
-        for (const entry of entriesToAdd) {
-            // Assign a UUID if id is missing, otherwise use provided id (converted to string)
-            const entryId = entry.id ? String(entry.id) : uuidv4();
-            // Remove 'id' from the data to be stored in JSONB, if it exists
-            const { id, ...dataToStore } = entry;
-            const dataJson = JSON.stringify(dataToStore);
+        // Process entries in batches to optimize performance and stay within parameter limits
+        const BATCH_SIZE = 1000;
+        for (let i = 0; i < entriesToAdd.length; i += BATCH_SIZE) {
+            const batch = entriesToAdd.slice(i, i + BATCH_SIZE);
+            const values: any[] = [];
+            const placeholders = batch.map((entry, index) => {
+                const entryId = entry.id ? String(entry.id) : uuidv4();
+                const { id, ...dataToStore } = entry;
+                const dataJson = JSON.stringify(dataToStore);
+                values.push(datasetName, entryId, dataJson);
+                return `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3})`;
+            }).join(', ');
 
             // Use ON CONFLICT to handle potential duplicate entry_id within the same dataset
             // This effectively makes addData behave like an upsert based on entry_id
             const query = `
                 INSERT INTO data_entries (dataset_name, entry_id, data)
-                VALUES ($1, $2, $3)
+                VALUES ${placeholders}
                 ON CONFLICT (dataset_name, entry_id)
                 DO UPDATE SET data = EXCLUDED.data;
             `;
-            await client.query(query, [datasetName, entryId, dataJson]);
-            console.log(`[addData Service - Dataset: ${datasetName}] Added/Updated entry with ID: ${entryId}`);
+            await client.query(query, values);
+            console.log(`[addData Service - Dataset: ${datasetName}] Added/Updated batch of ${batch.length} entries.`);
         }
 
         await client.query('COMMIT');

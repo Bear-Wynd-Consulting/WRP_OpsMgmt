@@ -9,7 +9,11 @@ export function Header() {
           <Database className="h-6 w-6" />
           <span className="text-xl font-semibold">DataHarbor</span>
         </Link>
-        {/* Add Navigation or User Profile section here if needed */}
+        <nav className="flex items-center gap-4">
+          <Link href="/admin" className="text-sm font-medium hover:underline">
+            Admin Panel
+          </Link>
+        </nav>
       </div>
     </header>
   );
