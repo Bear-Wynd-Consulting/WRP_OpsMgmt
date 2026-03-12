@@ -1,6 +1,7 @@
 import StatsWidget from '@/services/db/StatsWidget';
 import TaskTemplateManager from '@/services/db/TaskTemplateManager';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DbConnectionTestWidget } from '@/components/db-connection-test-widget';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,8 @@ export default function AdminDashboard() {
       </div>
 
       <StatsWidget />
+
+      <DbConnectionTestWidget />
 
       <Card>
         <CardHeader>
