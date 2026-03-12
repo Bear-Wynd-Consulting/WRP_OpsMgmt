@@ -1,6 +1,6 @@
-# DataHarbor (Firebase Studio Project)
+# WRP_OpsMgmt
 
-This is a Next.js application built within Firebase Studio for managing and exploring datasets. It utilizes Genkit for AI-powered data cleaning and PostgreSQL for persistent data storage.
+This is a Next.js application for managing and exploring datasets. It utilizes Genkit for AI-powered data cleaning and PostgreSQL for persistent data storage.
 
 ## Features
 
@@ -40,7 +40,7 @@ If you are new to IT and want the easiest way to get this application running, w
 2.  **Navigate to the project folder:**
     Use the `cd` command to change directories to where you downloaded or cloned this project.
     ```bash
-    cd path/to/DataHarbor
+    cd path/to/WRP_OpsMgmt
     ```
 3.  **Create your Environment File (`.env`):**
     The application needs a configuration file to know how to connect to the database and use the AI.
@@ -51,9 +51,9 @@ If you are new to IT and want the easiest way to get this application running, w
     # Database Configuration for Docker
     POSTGRES_HOST=db
     POSTGRES_PORT=5432
-    POSTGRES_USER=dataharbor_user
+    POSTGRES_USER=wrpops_user
     POSTGRES_PASSWORD=secure_password_123
-    POSTGRES_DATABASE=dataharbor_db
+    POSTGRES_DATABASE=wrpops_db
 
     # Google AI Key
     GOOGLE_GENAI_API_KEY=YOUR_API_KEY_HERE
@@ -102,19 +102,19 @@ If you are new to IT and want the easiest way to get this application running, w
 
 3.  **Configure PostgreSQL:**
     *   **Start your PostgreSQL server.** This is a common cause of connection errors. Check your operating system's services or use commands like `pg_ctl start` (depending on your installation method).
-    *   Create a PostgreSQL database (e.g., `dataharbor_db`).
+    *   Create a PostgreSQL database (e.g., `wrpops_db`).
     *   Create a PostgreSQL user and grant privileges to the database (e.g., `your_db_user`). Make note of the password.
     *   You can use tools like `psql` or graphical clients (pgAdmin, DBeaver) for this. Example `psql` commands:
         ```sql
         -- Connect to PostgreSQL as a superuser (like 'postgres')
         -- sudo -u postgres psql
 
-        CREATE DATABASE dataharbor_db;
+        CREATE DATABASE wrpops_db;
         CREATE USER your_db_user WITH PASSWORD 'your_db_password';
-        GRANT ALL PRIVILEGES ON DATABASE dataharbor_db TO your_db_user;
+        GRANT ALL PRIVILEGES ON DATABASE wrpops_db TO your_db_user;
 
         -- Optional: If schema 'public' needs explicit grants (less common):
-        -- \c dataharbor_db
+        -- \c wrpops_db
         -- GRANT ALL ON SCHEMA public TO your_db_user;
         -- GRANT ALL ON ALL TABLES IN SCHEMA public TO your_db_user; -- For existing tables
         -- ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO your_db_user; -- For future tables
@@ -131,7 +131,7 @@ If you are new to IT and want the easiest way to get this application running, w
         POSTGRES_PORT=5432      # Or the port your PostgreSQL server is listening on
         POSTGRES_USER=your_db_user
         POSTGRES_PASSWORD=your_db_password
-        POSTGRES_DATABASE=dataharbor_db
+        POSTGRES_DATABASE=wrpops_db
 
         # Optional: Google Generative AI API Key (if using AI Cleaning)
         # Obtain an API key from Google AI Studio (https://aistudio.google.com/)
@@ -202,19 +202,19 @@ If you see a "connect ECONNREFUSED 127.0.0.1:5432" (or similar host/port) error 
 6.  **Authentication (`pg_hba.conf`)?**
     *   This file controls which hosts are allowed to connect, which users can connect, which databases they can access, and the authentication method required.
     *   Find `pg_hba.conf` (usually in the same directory as `postgresql.conf`).
-    *   Look for lines that match your connection attempt. For a local connection from the app using user `your_db_user` to database `dataharbor_db`, you'll need a line similar to:
+    *   Look for lines that match your connection attempt. For a local connection from the app using user `your_db_user` to database `wrpops_db`, you'll need a line similar to:
         ```
         # TYPE  DATABASE        USER            ADDRESS                 METHOD
-        host    dataharbor_db   your_db_user    127.0.0.1/32            md5   # Or scram-sha-256
+        host    wrpops_db   your_db_user    127.0.0.1/32            md5   # Or scram-sha-256
         # or for connections via local Unix socket (common on Linux/macOS if HOST is localhost)
-        # local   dataharbor_db   your_db_user                            md5   # Or scram-sha-256
+        # local   wrpops_db   your_db_user                            md5   # Or scram-sha-256
         ```
     *   `127.0.0.1/32` allows connections specifically from the IPv4 loopback address. `::1/128` would be for IPv6.
     *   The `METHOD` (e.g., `md5`, `scram-sha-256`) determines how the password is verified. Ensure it matches what your setup expects. `trust` allows connection without a password (not recommended for production).
     *   You might need to reload the PostgreSQL configuration after changing this file (e.g., `sudo systemctl reload postgresql` or `pg_ctl reload`).
 
 7.  **Database/User Exists?**
-    *   Confirm that the database (`dataharbor_db`) and user (`your_db_user`) actually exist in PostgreSQL and that the user has connection privileges. Use `psql` or a GUI tool to verify.
+    *   Confirm that the database (`wrpops_db`) and user (`your_db_user`) actually exist in PostgreSQL and that the user has connection privileges. Use `psql` or a GUI tool to verify.
 
 By checking these points systematically, you should be able to identify and resolve the `ECONNREFUSED` error. Check the application startup logs for more detailed connection error messages and troubleshooting tips.
 
