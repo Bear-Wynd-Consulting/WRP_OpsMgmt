@@ -11,7 +11,11 @@ import {
 // Make sure POSTGRES_USER, POSTGRES_PASSWORD, and POSTGRES_DATABASE are set in your environment variables,
 // or run it where dotenv loads the appropriate variables.
 
-import 'dotenv/config';
+try {
+  require('dotenv/config');
+} catch (e) {
+  // dotenv not found, skipping
+}
 
 async function runTests() {
     console.log("Starting Database Integration Tests for Work Order Service...");
