@@ -22,15 +22,15 @@ export function getPool(): Pool {
         const password = process.env.POSTGRES_PASSWORD; // Keep confidential
         const database = process.env.POSTGRES_DATABASE || process.env.POSTGRES_DB;
 
-        const connectionString = `postgres://${user}:[MASKED]@${host}:${port}/${database}`; // For logging
+        const connectionString = `postgres://[MASKED]:[MASKED]@[MASKED]:[MASKED]/[MASKED]`; // Redacted for logging
 
         if (!user || !password || !database) {
              console.error("[Database Service] ERROR: Missing required PostgreSQL environment variables (POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DATABASE or POSTGRES_DB).");
-             console.error(`[Database Service] Current Config: host=${host}, port=${port}, user=${user ? user : 'MISSING'}, database=${database ? database : 'MISSING'}, password=${password ? '[SET]' : 'MISSING'}`);
+             console.error(`[Database Service] Current Config Status: host=${host ? '[SET]' : 'MISSING'}, port=${port ? '[SET]' : 'MISSING'}, user=${user ? '[SET]' : 'MISSING'}, database=${database ? '[SET]' : 'MISSING'}, password=${password ? '[SET]' : 'MISSING'}`);
              throw new Error("Missing required PostgreSQL environment variables. Check your .env file.");
         }
 
-        console.log(`[Database Service] Creating PostgreSQL connection pool with config: { host: ${host}, port: ${port}, user: ${user}, database: ${database}, password: [MASKED] }`);
+        console.log(`[Database Service] Creating PostgreSQL connection pool.`);
 
         pool = new Pool({
             host: host,
@@ -90,7 +90,7 @@ export function getPool(): Pool {
                     console.error('        1. Incorrect POSTGRES_USER or POSTGRES_PASSWORD in .env.');
                     console.error('        2. User does not have connection privileges in pg_hba.conf.');
                  } else if (err.code === '3D000') { // database does not exist
-                    console.error(`   ---> Database "${database}" does not exist.`);
+                    console.error(`   ---> Database does not exist.`);
                     console.error('        Common causes:');
                     console.error('        1. Incorrect POSTGRES_DATABASE in .env.');
                     console.error('        2. The database was not created in PostgreSQL.');
