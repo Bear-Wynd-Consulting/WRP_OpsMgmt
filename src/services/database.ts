@@ -1,6 +1,7 @@
 import { Pool, QueryResult } from 'pg';
 import type { DataEntry, RelationshipEntry } from './types';
 import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 
 // ========================================================================
 // ==                       PostgreSQL Implementation                    ==
@@ -138,6 +139,21 @@ CREATE TABLE IF NOT EXISTS relationships (
     FOREIGN KEY (dataset_name, target_entry_id) REFERENCES data_entries (dataset_name, entry_id) ON DELETE CASCADE
 );`;
 
+const CREATE_USERS_TABLE = `
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT
+);`;
+
+const CREATE_SESSIONS_TABLE = `
+CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TIMESTAMPTZ NOT NULL
+);`;
+
 
 async function initializeSchema(): Promise<void> {
     console.log('[Database Service] Initializing database schema if needed...');
@@ -155,6 +171,22 @@ async function initializeSchema(): Promise<void> {
         await client.query(CREATE_DATASETS_TABLE);
         await client.query(CREATE_DATA_ENTRIES_TABLE);
         await client.query(CREATE_RELATIONSHIPS_TABLE);
+        await client.query(CREATE_USERS_TABLE);
+        await client.query(CREATE_SESSIONS_TABLE);
+
+        // Seed users
+        const usersRes = await client.query('SELECT COUNT(*) FROM users');
+        if (parseInt(usersRes.rows[0].count) === 0) {
+            console.log('[Database Service] Seeding default users...');
+            const hash = (pw: string) => crypto.createHash('sha256').update(pw).digest('hex');
+
+            await client.query(`
+                INSERT INTO users (username, password, role) VALUES
+                ('admin', $1, 'admin'),
+                ('tenant1', $2, 'tenant'),
+                ('generic_user', $3, 'generic');
+            `, [hash('admin'), hash('password'), hash('password')]);
+        }
 
         // Check if 'default' dataset exists, create if not
         const res = await client.query('SELECT name FROM datasets WHERE name = $1', ['default']);
