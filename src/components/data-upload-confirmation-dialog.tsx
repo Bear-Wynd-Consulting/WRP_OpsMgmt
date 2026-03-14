@@ -121,8 +121,14 @@ export function DataUploadConfirmationDialog({
           console.log("Dialog: Calling uploadDataAction (Add New to active dataset)");
           // Prepare data for addNew - ensuring string IDs if present
           const dataToSend = Array.isArray(data)
-            ? data.map(entry => ({ ...entry, id: entry.id ? String(entry.id) : undefined }))
-            : { ...data, id: data.id ? String(data.id) : undefined };
+            ? data.map(entry => {
+                const { id, ...rest } = entry;
+                return (id ? { id: String(id), ...rest } : rest) as DataEntry;
+              })
+            : (() => {
+                const { id, ...rest } = data;
+                return (id ? { id: String(id), ...rest } : rest) as DataEntry;
+              })();
           result = await uploadDataAction(dataToSend); // Adds/updates in the currently active dataset
         } else if (actionType === "amend"){
           console.log(`Dialog: Calling updateDataAction (Amend ID: ${amendTargetId.trim()} in active dataset)`);
@@ -131,10 +137,10 @@ export function DataUploadConfirmationDialog({
         } else { // actionType === "createNew"
             // Prepare data, ensuring string IDs if present, or generating new ones
             const dataArray = Array.isArray(data) ? data : [data];
-            const processedData = dataArray.map(entry => ({
-                ...entry, // Keep original data
-                id: entry.id ? String(entry.id) : undefined // Ensure string ID if present
-            }));
+            const processedData = dataArray.map(entry => {
+                const { id, ...rest } = entry;
+                return (id ? { id: String(id), ...rest } : rest) as DataEntry;
+            });
             const datasetName = newDatasetName.trim();
             console.log(`Dialog: Calling createNewDatasetAction (Create/Replace: ${datasetName})`);
             result = await createNewDatasetAction(datasetName, processedData); // Creates/replaces and sets as active

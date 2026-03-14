@@ -120,11 +120,11 @@ export function DataDetailView({ initialData, entryId }: DataDetailViewProps) {
                     // Simplify headers (optional, based on previous logic)
                      const simpleHeaders = headers.filter(header => {
                         if (result.data.length > 0 && result.data[0] && typeof result.data[0] === 'object') {
-                             const firstValue = (result.data[0] as Record<string, unknown>)[header];
+                             const firstValue = (result.data[0] as Record<string, unknown>)[header as string];
                              return typeof firstValue !== 'object' || firstValue === null;
                         }
                         return true;
-                    });
+                    }) as string[];
                     setRelatedHeaders(simpleHeaders);
                     setTempHeaders(simpleHeaders);
 
@@ -411,7 +411,7 @@ export function DataDetailView({ initialData, entryId }: DataDetailViewProps) {
                         <Textarea
                             id="edit-data-textarea"
                             // Use displayData which includes the ID for editing context, but ID is removed before saving
-                            value={editedJsonString || JSON.stringify({ id: entryId, ...currentData }, null, 2)}
+                            value={editedJsonString || JSON.stringify({ ...currentData, id: entryId }, null, 2)}
                             onChange={handleEditChange}
                             className="min-h-[250px] font-mono text-sm"
                             disabled={isSaving}
@@ -425,7 +425,7 @@ export function DataDetailView({ initialData, entryId }: DataDetailViewProps) {
                  ) : (
                     <pre className="p-4 bg-muted rounded-md overflow-auto text-sm">
                       {/* Display data including the ID */}
-                      {JSON.stringify({ id: entryId, ...currentData }, null, 2)}
+                      {JSON.stringify({ ...currentData, id: entryId }, null, 2)}
                     </pre>
                  )}
             </CardContent>

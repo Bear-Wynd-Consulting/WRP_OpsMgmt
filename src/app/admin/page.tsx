@@ -1,5 +1,5 @@
-import StatsWidget from '@/services/db/StatsWidget';
-import TaskTemplateManager from '@/services/db/TaskTemplateManager';
+import StatsWidget from '@/services/StatsWidget';
+import TaskTemplateManager from '@/services/TaskTemplateManager';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DbConnectionTestWidget } from '@/components/db-connection-test-widget';
 

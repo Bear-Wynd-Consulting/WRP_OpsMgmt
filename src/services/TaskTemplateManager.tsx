@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { fetchTaskTemplates, saveTaskTemplate } from '@/actions/taskTemplateActions';
+import { fetchTaskTemplates, saveTaskTemplate } from '@/services/taskTemplateActions';
 import type { TaskTemplate } from '@/services/workOrderService';
 
 export default function TaskTemplateManager() {

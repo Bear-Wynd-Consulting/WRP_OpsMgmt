@@ -1,6 +1,6 @@
 import React from 'react';
 import { fetchTenants } from '@/services/workOrderActions';
-import TenantManager from '@/components/admin/TenantManager';
+import TenantManager from '@/services/TenantManager';
 
 export default async function TenantsPage() {
     const tenants = await fetchTenants();

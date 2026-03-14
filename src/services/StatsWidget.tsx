@@ -1,5 +1,5 @@
 import React from 'react';
-import { getDashboardStats } from '@/actions/dashboardActions';
+import { getDashboardStats } from '@/services/dashboardActions';
 import { ClipboardList, CheckSquare, Plus } from 'lucide-react';
 import Link from 'next/link';
 
