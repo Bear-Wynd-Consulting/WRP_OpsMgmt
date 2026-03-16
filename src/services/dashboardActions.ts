@@ -10,8 +10,10 @@ export interface DashboardStats {
 export async function getDashboardStats(): Promise<DashboardStats> {
     const client = await getPool().connect();
     try {
-        const openOrdersRes = await client.query("SELECT COUNT(*) FROM work_orders WHERE status = 'open'");
-        const pendingTasksRes = await client.query("SELECT COUNT(*) FROM work_order_tasks WHERE status = 'pending'");
+        const [openOrdersRes, pendingTasksRes] = await Promise.all([
+            client.query("SELECT COUNT(*) FROM work_orders WHERE status = 'open'"),
+            client.query("SELECT COUNT(*) FROM work_order_tasks WHERE status = 'pending'")
+        ]);
         
         return {
             openWorkOrders: parseInt(openOrdersRes.rows[0].count, 10),
