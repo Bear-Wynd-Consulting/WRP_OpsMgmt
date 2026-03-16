@@ -38,26 +38,6 @@ export interface Tenant {
 export async function fetchTenants(): Promise<Tenant[]> {
     const client = await getPool().connect();
     try {
-        // Ensure table exists for this context
-        await client.query(`
-            CREATE TABLE IF NOT EXISTS tenants (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                name TEXT NOT NULL,
-                location TEXT
-            );
-        `);
-        
-        // Seed if empty for demonstration
-        const countRes = await client.query('SELECT COUNT(*) FROM tenants');
-        if (parseInt(countRes.rows[0].count) === 0) {
-             await client.query(`
-                INSERT INTO tenants (name, location) VALUES 
-                ('Acme Corp', '123 Industrial Way'),
-                ('Globex Corporation', '456 Cypress Creek'),
-                ('Soylent Corp', '789 People Place');
-             `);
-        }
-
         const res = await client.query('SELECT id, name, location FROM tenants ORDER BY name');
         return res.rows;
     } catch (e) {

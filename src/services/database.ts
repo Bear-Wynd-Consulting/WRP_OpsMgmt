@@ -154,6 +154,12 @@ CREATE TABLE IF NOT EXISTS sessions (
     expires_at TIMESTAMPTZ NOT NULL
 );`;
 
+const CREATE_TENANTS_TABLE = `
+CREATE TABLE IF NOT EXISTS tenants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    location TEXT
+);`;
 
 async function initializeSchema(): Promise<void> {
     console.log('[Database Service] Initializing database schema if needed...');
@@ -173,6 +179,7 @@ async function initializeSchema(): Promise<void> {
         await client.query(CREATE_RELATIONSHIPS_TABLE);
         await client.query(CREATE_USERS_TABLE);
         await client.query(CREATE_SESSIONS_TABLE);
+        await client.query(CREATE_TENANTS_TABLE);
 
         // Seed users
         const usersRes = await client.query('SELECT COUNT(*) FROM users');
@@ -186,6 +193,18 @@ async function initializeSchema(): Promise<void> {
                 ('tenant1', $2, 'tenant'),
                 ('generic_user', $3, 'generic');
             `, [hash('admin'), hash('password'), hash('password')]);
+        }
+
+        // Seed tenants if empty
+        const tenantsRes = await client.query('SELECT COUNT(*) FROM tenants');
+        if (parseInt(tenantsRes.rows[0].count) === 0) {
+            console.log('[Database Service] Seeding default tenants...');
+            await client.query(`
+                INSERT INTO tenants (name, location) VALUES
+                ('Acme Corp', '123 Industrial Way'),
+                ('Globex Corporation', '456 Cypress Creek'),
+                ('Soylent Corp', '789 People Place');
+            `);
         }
 
         // Check if 'default' dataset exists, create if not
