@@ -2,7 +2,7 @@
 // src/components/data-detail-view.tsx
 "use client";
 
-import { useState, useTransition, useEffect, useMemo, useCallback } from 'react';
+import { useState, useTransition, useEffect, useCallback } from 'react';
 import type { DataEntry, RelationshipEntry } from '@/services/types'; // Updated import path
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';

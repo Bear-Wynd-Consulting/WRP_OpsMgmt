@@ -2,7 +2,7 @@
 // src/components/data-preview-section.tsx
 "use client";
 
-import { useState, useTransition, useEffect, useCallback } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw, Filter, X, Database } from "lucide-react"; // Removed BarChartHorizontalBig
 

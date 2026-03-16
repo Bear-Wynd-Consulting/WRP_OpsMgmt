@@ -1,4 +1,3 @@
-import React from 'react';
 import { fetchWorkOrderData } from '@/services/db/workOrderActions';
 import WorkOrderDetail from '@/services/db/WorkOrderDetail';
 import { notFound } from 'next/navigation';

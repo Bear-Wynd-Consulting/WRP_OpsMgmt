@@ -15,7 +15,7 @@ import {
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Eye, Edit, Link2 } from "lucide-react";
+import { Edit } from "lucide-react";
 
 interface DataPreviewTableProps {
   data: DataEntry[]; // Expects DataEntry with string id
