@@ -1,8 +1,6 @@
 
 // src/actions/data-actions.ts
 'use server';
-import pool from '@/services/db/client';
-
 import {
     addData,
     updateDataById,
@@ -16,7 +14,7 @@ import {
     getAllDatasetNames,      // Import new service function
     // Removed replaceDatabase import as it's superseded by createOrReplaceDataset
 } from '@/services/database';
-import type { DataEntry, RelationshipEntry } from '@/services/types'; // Import types
+import type { DataEntry } from '@/services/types'; // Import types
 import { revalidatePath } from 'next/cache';
 import { cleanDataFlow } from '@/ai/flows/clean-data-flow';
 import { cookies } from 'next/headers';

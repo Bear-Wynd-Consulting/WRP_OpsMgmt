@@ -1,4 +1,3 @@
-import React from 'react';
 import { fetchTenants } from '@/services/workOrderActions';
 import TenantManager from '@/components/admin/TenantManager';
 

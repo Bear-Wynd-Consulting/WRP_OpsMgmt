@@ -1,6 +1,6 @@
 
 // src/app/api/data/route.ts
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
 // This API route is no longer the primary way to upload data,
 // as the frontend now uses Server Actions (uploadDataAction, updateDataAction, createNewDatasetAction)

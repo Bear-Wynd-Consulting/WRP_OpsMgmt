@@ -1,4 +1,3 @@
-import React from 'react';
 import { getDashboardStats } from '@/services/db/dashboardActions';
 import { ClipboardList, CheckSquare } from 'lucide-react';
 
